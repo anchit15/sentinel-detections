@@ -1,0 +1,14 @@
+---
+extends: default
+
+ignore: |
+  .venv/
+  data/
+  build/
+
+rules:
+  line-length:
+    max: 120
+  # GitHub Actions uses `on:` as a key; only check truthy values, not keys.
+  truthy:
+    check-keys: false
