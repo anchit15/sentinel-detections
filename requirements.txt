@@ -1,1 +1,3 @@
 # Runtime dependencies, pinned. Each is added by the change that first imports it.
+azure-kusto-data==6.0.4
+PyYAML==6.0.3
