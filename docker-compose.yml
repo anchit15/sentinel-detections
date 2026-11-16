@@ -1,0 +1,14 @@
+---
+services:
+  kusto:
+    # Pinned build of the Kusto emulator. ACCEPT_EULA=Y accepts the Microsoft
+    # Software License Terms; the image is pulled, never redistributed.
+    image: mcr.microsoft.com/azuredataexplorer/kustainer-linux:2026.10.31.1933-2643-f3fb1d9-master
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "${KUSTO_PORT:-8080}:8080"
+    # The loader writes normalised CSVs under ./data; the engine ingests them from here.
+    volumes:
+      - ./data:${KUSTO_DATA_DIR:-/kustodata}:ro
+    mem_limit: 4g
