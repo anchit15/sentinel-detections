@@ -1,0 +1,120 @@
+---
+# Attack datasets loaded into the Kusto emulator.
+#
+# primary_technique: the technique this dataset is the attack dataset for.
+# techniques: every ATT&CK technique the dataset's logs contain. This is the
+#   union of OTRF's own mapping and the planned techniques whose activity was
+#   found in the logs, so hits on these are expected cross-hits, not false
+#   positives.
+# URLs are pinned to OTRF commit d9d40ef123d2c87d5d3df28c96bcab4f0faccc87.
+
+datasets:
+  - id: empire_mimikatz_logonpasswords
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/empire_mimikatz_logonpasswords.zip
+    sha256: bb4c057b62d781be5426e011872ba1a15070c07afbb24848a14458f4b22b06fb
+    licence: MIT
+    primary_technique: T1003.001
+    techniques: [T1003.001]
+
+  - id: empire_dcsync
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/empire_dcsync_dcerpc_drsuapi_DsGetNCChanges.zip
+    sha256: fe1fcc96c0ff0cbae8fd4ffaadf85f51e28475441774f6fda3d963d4e2962800
+    licence: MIT
+    primary_technique: T1003.006
+    techniques: [T1003.006]
+
+  - id: purplesharp_ad_playbook_i
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/purplesharp_ad_playbook_I.zip
+    sha256: 2a2d80e7b8d8ee6821a1754118f3ab908b4bac84cf4ed3d018e281f631bd2870
+    licence: MIT
+    primary_technique: T1558.003
+    techniques: [T1558.003, T1110.003, T1135, T1021.006]
+
+  - id: empire_over_pth
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/empire_over_pth_patch_lsass.zip
+    sha256: daee42bbd9f7c6265e5614ce468ec868a399ee03877456dd01ec34e3e06479e7
+    licence: MIT
+    primary_technique: T1550.002
+    techniques: [T1550.002, T1003.001]
+    notes: >-
+      Overpass-the-hash with mimikatz sekurlsa::pth (LogonType 9, seclogo).
+      sekurlsa also opens LSASS memory, hence T1003.001.
+
+  - id: empire_launcher_vbs
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/execution/host/empire_launcher_vbs.zip
+    sha256: 812da270cf8cda6f1948fb6275410f15dc1794d0bd6b623c9c25b2518285019c
+    licence: MIT
+    primary_technique: T1059.001
+    techniques: [T1059.001, T1059.005]
+
+  - id: schtask_create
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/schtask_create.zip
+    sha256: 74394c64b660d5b229936d00ea8b3ceb900126cd9e261f58fa2be766579ec5de
+    licence: MIT
+    primary_technique: T1053.005
+    techniques: [T1053.005]
+    notes: >-
+      Remote task creation that reuses a built-in Windows task path
+      (\Microsoft\Windows\SoftwareProtectionPlatform\EventCacheManager).
+
+  - id: covenant_sharpsc_create
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_sharpsc_create_dcerpc_smb_svcctl.zip
+    sha256: 77487bbd1fc7954adbc9ba07bfeeeb9d57192b0f0e0f54e1ee5a05c71a5be84a
+    licence: MIT
+    primary_technique: T1543.003
+    techniques: [T1543.003, T1021.002]
+
+  - id: empire_run_keys_elevated
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_elevated_user.zip
+    sha256: 2809354d679025859d723be3ceb1e2c9f9e5dde2ebec5bbea7c398e165a9b67d
+    licence: MIT
+    primary_technique: T1547.001
+    techniques: [T1547.001]
+
+  - id: covenant_copy_smb
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_copy_smb_CreateRequest.zip
+    sha256: a43e5f20cb412fc068c9e2449e5a7bd0cf8456ebe6a782e69301ea0905590871
+    licence: MIT
+    primary_technique: T1021.002
+    techniques: [T1021.002]
+
+  - id: psh_lsass_dump_comsvcs
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/psh_lsass_memory_dump_comsvcs.zip
+    sha256: 0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae
+    licence: MIT
+    primary_technique: T1218.011
+    techniques: [T1218.011, T1003.001]
+    notes: >-
+      rundll32 runs comsvcs.dll MiniDump against LSASS. Also contains a
+      Security 1102 (log cleared) from lab preparation, not from the attack.
+
+  - id: auditpol_policy_modification
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/defense_evasion/host/auditpol_system_user_auditpolicy_modification.zip
+    sha256: 5eb1776e7e9f79060a87ed9efcce0eebbab7940f8f51db8b2d67368c64e2187d
+    licence: MIT
+    primary_technique: T1562.002
+    techniques: [T1562.002]
+    notes: >-
+      Also contains a System 104 (log cleared) from lab preparation, not from
+      the attack.
+
+  - id: empire_wmic_add_user
+    source: OTRF Security-Datasets
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/empire_wmic_add_user_backdoor.zip
+    sha256: 88502d9a8d90f17aa638d7331120d52e7295480ea5fc4a156463399181d1c6e1
+    licence: MIT
+    primary_technique: T1136.001
+    techniques: [T1136.001, T1047]
+    notes: >-
+      Creates the local account "backdoor" on WORKSTATION6 through remote WMIC.
