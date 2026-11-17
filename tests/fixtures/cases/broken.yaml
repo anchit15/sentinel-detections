@@ -1,0 +1,7 @@
+---
+attack_dataset: empire_mimikatz_logonpasswords
+min_hits: 1
+baseline_query: |
+  Event
+  | where EventID == -1
+  | project TimeGenerated, Computer

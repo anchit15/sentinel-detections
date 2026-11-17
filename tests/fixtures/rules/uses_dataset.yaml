@@ -1,0 +1,28 @@
+---
+id: 5220f6f8-dc5b-4990-bab2-d71c46e4bbd7
+name: Test fixture - rule that reads the emulator-only Dataset column
+description: Filters on Dataset, which does not exist in Sentinel, so it must be rejected.
+severity: Low
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.001
+query: |
+  SecurityEvent
+  | where Dataset == "empire_mimikatz_logonpasswords"
+  | project TimeGenerated, Computer
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled
