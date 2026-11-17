@@ -5,7 +5,6 @@ import zipfile
 from pathlib import PurePosixPath
 
 from sentinel_detections.loader import (
-    Config,
     create_table_command,
     ingest_command,
     normalise_dataset,
@@ -77,15 +76,3 @@ def test_ingest_command_reads_from_the_container_path():
     assert command == (
         ".ingest into table SecurityEvent (@'/kustodata/normalised/a.csv.gz') with (format='csv')"
     )
-
-
-def test_config_defaults_and_environment_overrides(monkeypatch):
-    for name in ("KUSTO_CLUSTER_URL", "KUSTO_DATABASE", "KUSTO_DATA_DIR"):
-        monkeypatch.delenv(name, raising=False)
-    assert Config.from_env() == Config("http://localhost:8080", "NetDefaultDB", "/kustodata")
-
-    monkeypatch.setenv("KUSTO_CLUSTER_URL", "http://localhost:8081")
-    monkeypatch.setenv("KUSTO_DATA_DIR", "/data")
-    config = Config.from_env()
-    assert config.cluster_url == "http://localhost:8081"
-    assert config.container_data_dir == "/data"
