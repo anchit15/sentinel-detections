@@ -219,5 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Downloaded datasets
-data/
+# Downloaded datasets and generated tables; only the manifest is tracked
+data/*
+!data/manifest.yaml
