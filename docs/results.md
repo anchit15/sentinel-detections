@@ -17,6 +17,12 @@ Each rule is run once per dataset. Every dataset falls into one of three groups:
 | [DCSync replication request by a non-computer account](../rules/credential_access/dcsync.yaml) | T1003.006 | `empire_dcsync` | 1 | 0 | 0 | 0 |
 | [Kerberoasting with RC4 service tickets](../rules/credential_access/kerberoasting.yaml) | T1558.003 | `purplesharp_ad_playbook_i` | 1 | 0 | 7 | 0 |
 | [LSASS memory read access](../rules/credential_access/lsass_memory_access.yaml) | T1003.001 | `empire_mimikatz_logonpasswords` | 1 | 4 | 153 | 0 |
+| [Audit policy auditing removed](../rules/defense_evasion/audit_policy_disabled.yaml) | T1562.002 | `auditpol_policy_modification` | 1 | 0 | 0 | 0 |
+| [LSASS dump via comsvcs.dll MiniDump](../rules/defense_evasion/rundll32_comsvcs_minidump.yaml) | T1218.011, T1003.001 | `psh_lsass_dump_comsvcs` | 1 | 0 | 0 | 0 |
 | [PowerShell encoded command on the command line](../rules/execution/encoded_powershell.yaml) | T1059.001 | `empire_launcher_vbs` | 1 | 0 | 3 | 0 |
+| [File written to a remote administrative share](../rules/lateral_movement/admin_share_write.yaml) | T1021.002 | `covenant_copy_smb` | 1 | 0 | 29 | 0 |
 | [Overpass-the-hash logon with LSASS memory write](../rules/lateral_movement/overpass_the_hash.yaml) | T1550.002 | `empire_over_pth` | 1 | 0 | 0 | 0 |
+| [Local account created on a host](../rules/persistence/local_account_created.yaml) | T1136.001 | `empire_wmic_add_user` | 1 | 0 | 0 | 0 |
+| [Registry Run key value set](../rules/persistence/run_key_persistence.yaml) | T1547.001 | `empire_run_keys_elevated` | 1 | 0 | 0 | 0 |
 | [Scheduled task created or modified by a user account](../rules/persistence/scheduled_task_by_user.yaml) | T1053.005 | `schtask_create` | 1 | 0 | 5 | 0 |
+| [Service installed by a user account](../rules/persistence/service_installed_by_user.yaml) | T1543.003 | `covenant_sharpsc_create` | 1 | 0 | 0 | 0 |
