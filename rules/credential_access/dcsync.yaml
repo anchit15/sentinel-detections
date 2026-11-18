@@ -1,0 +1,72 @@
+---
+id: 8dc60608-d0ba-491e-8274-7dac9937f5f0
+name: DCSync replication request by a non-computer account
+description: |
+  Detects DCSync (mimikatz lsadump::dcsync, Impacket secretsdump): an account asks a domain controller to
+  replicate password data as if it were another domain controller. Built on Security Event ID 4662, which
+  records the directory replication rights used. One alert is raised per logon session.
+  Tuning: the rule alerts only when the session used DS-Replication-Get-Changes-All or
+  DS-Replication-Get-Changes-In-Filtered-Set, the rights that expose secrets; DS-Replication-Get-Changes on
+  its own is also used by legitimate directory sync tools. Computer accounts (names ending in $) are excluded
+  because domain controllers replicate with each other using them. Limitation: an attacker using a stolen
+  domain controller machine account is not detected.
+  The source IP comes from the matching 4624 logon on the domain controller; it is empty when that logon is
+  outside the query period, and the alert still fires.
+  The benign corpus contains no directory replication auditing, so it cannot measure this tuning; the
+  exclusions are based on known production false positives (domain controller replication, sync tools).
+severity: High
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.006
+query: |
+  SecurityEvent
+  | where EventID == 4662
+  | where Properties has_any ("1131f6aa-9c07-11d1-f79f-00c04fc2dcd2",
+                              "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2",
+                              "89e95b76-444d-4c62-991a-0facbeda640c")
+  // Domain controllers replicate with each other using their computer accounts
+  | where SubjectUserName !endswith "$"
+  | extend Right = case(
+      Properties has "1131f6ad-9c07-11d1-f79f-00c04fc2dcd2", "DS-Replication-Get-Changes-All",
+      Properties has "89e95b76-444d-4c62-991a-0facbeda640c", "DS-Replication-Get-Changes-In-Filtered-Set",
+      "DS-Replication-Get-Changes")
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), Events = count(),
+              SecretRightEvents = countif(Right != "DS-Replication-Get-Changes"), Rights = make_set(Right)
+            by Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, SubjectLogonId
+  // Get-Changes alone is also used by sync tools; Get-Changes-All and Filtered-Set expose password data
+  | where SecretRightEvents > 0
+  | join kind=leftouter (
+      SecurityEvent
+      | where EventID == 4624
+      | summarize SourceIp = take_any(IpAddress) by Computer, SubjectLogonId = TargetLogonId
+    ) on Computer, SubjectLogonId
+  | project StartTime, EndTime, Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, SubjectLogonId,
+            SourceIp, Rights, Events
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: SourceIp
+version: 1.0.0
+kind: Scheduled
