@@ -1,0 +1,7 @@
+---
+attack_dataset: empire_launcher_vbs
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 4688
+  | where NewProcessName endswith @"\powershell.exe"
