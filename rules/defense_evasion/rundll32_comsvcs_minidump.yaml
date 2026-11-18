@@ -1,0 +1,61 @@
+---
+id: 3fb81650-b551-4825-9172-6de332f5aa98
+name: LSASS dump via comsvcs.dll MiniDump
+description: |
+  Detects a process command line that calls the MiniDump export of comsvcs.dll, usually through rundll32
+  ("rundll32 comsvcs.dll, MiniDump <pid> <file> full"). Attackers use this signed Windows DLL to dump LSASS
+  memory and extract credentials offline without bringing their own tools. Built on Security Event ID 4688
+  with command-line auditing; the dumped process ID and output path are extracted for triage.
+  Tuning: the rule matches the capability, calling MiniDump in comsvcs, by name or by ordinal 24 (including
+  the padded, signed and 32-bit wrap-around forms such as #+024 and #-4294967272 used to evade string
+  matching). The process name is not checked, so a renamed rundll32.exe is still detected. Limitation: a
+  renamed copy of comsvcs.dll is not detected by this rule; the LSASS access itself is still covered by
+  Sysmon process access detections.
+  The benign corpus contains no other rundll32 executions, so it cannot measure tuning; in production
+  rundll32 runs constantly, which is why the rule matches comsvcs and MiniDump rather than rundll32.
+severity: High
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+  - CredentialAccess
+relevantTechniques:
+  - T1218.011
+  - T1003.001
+query: |
+  SecurityEvent
+  | where EventID == 4688
+  | where CommandLine has "comsvcs"
+  // MiniDump by name, or by its ordinal 24, also written padded, signed or as the 32-bit wrap-around value
+  | where CommandLine has "minidump" or CommandLine matches regex @'#\s*(?:\+?0*24|-4294967272)\b'
+  | extend DumpedProcessId = extract(@'(?i)(?:minidump|#\s*[-+]?\d+)\W+(\d+)', 1, CommandLine),
+           DumpPath        = extract(@'(?i)(?:minidump|#\s*[-+]?\d+)\W+\d+\s+"?([^"\s]+)', 1, CommandLine)
+  | project TimeGenerated, Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, ParentProcessName,
+            NewProcessName, NewProcessId, CommandLine, DumpedProcessId, DumpPath
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: NewProcessId
+      - identifier: CommandLine
+        columnName: CommandLine
+version: 1.0.0
+kind: Scheduled

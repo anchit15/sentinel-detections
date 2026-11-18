@@ -1,0 +1,7 @@
+---
+attack_dataset: psh_lsass_dump_comsvcs
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 4688
+  | where NewProcessName endswith @"\rundll32.exe"
