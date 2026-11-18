@@ -1,0 +1,55 @@
+---
+id: 498d07ce-524d-468b-ad6f-44262b8a5e92
+name: Audit policy auditing removed
+description: |
+  Detects Windows audit policy changes that remove success or failure auditing from a subcategory (for
+  example auditpol /set ... /success:disable, or auditpol /clear), which attackers use to stop their later
+  actions being logged. Built on Security Event ID 4719, which is written when the change happens, even
+  though later events may not be. One alert is raised per logon session, with the number of subcategories
+  affected.
+  Tuning: only removals alert (%%8448 Success removed, %%8450 Failure removed); changes that add auditing
+  harden the host and are ignored. No account is excluded: Group Policy applies audit settings as SYSTEM,
+  but an attacker running as SYSTEM would hide behind such an exclusion, and a policy that removes auditing
+  is worth reviewing either way.
+  The benign corpus contains no other audit policy changes, so it cannot measure this tuning; it is based on
+  known production noise (Group Policy changes that add auditing).
+  ATT&CK note: tagged T1562.002 to match Microsoft Sentinel's ATT&CK v18 alignment; ATT&CK v20 replaces it
+  with T1685.001 (Disable or Modify Windows Event Log) under Defense Impairment.
+severity: High
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+relevantTechniques:
+  - T1562.002
+query: |
+  SecurityEvent
+  | where EventID == 4719
+  // %%8448 = Success removed, %%8450 = Failure removed; additions (%%8449, %%8451) harden auditing
+  | where AuditPolicyChanges contains "%%8448" or AuditPolicyChanges contains "%%8450"
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), Events = count(),
+              Subcategories = dcount(SubcategoryGuid), SubcategoryGuids = make_set(SubcategoryGuid, 100)
+            by Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, SubjectLogonId
+  | project StartTime, EndTime, Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, SubjectLogonId,
+            Subcategories, Events, SubcategoryGuids
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled

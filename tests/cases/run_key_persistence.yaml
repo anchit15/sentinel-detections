@@ -1,0 +1,7 @@
+---
+attack_dataset: empire_run_keys_elevated
+min_hits: 1
+baseline_query: |
+  Event
+  | where Source == "Microsoft-Windows-Sysmon" and EventID == 13
+  | where EventData has @"\CurrentVersion\Run"

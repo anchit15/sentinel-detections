@@ -1,0 +1,58 @@
+---
+id: 68a95de7-2694-4ae0-8d0d-f1f9ecbf58bc
+name: Local account created on a host
+description: |
+  Detects a local user account being created in a host's own account database (SAM), locally or remotely
+  (net user /add, WMIC, PowerShell). Attackers create local accounts as backdoors that survive domain
+  password resets. Built on Security Event ID 4720.
+  Tuning: domain accounts are excluded. On a domain controller, 4720 records domain accounts and the target
+  domain is the Active Directory domain, which help desks create daily; for a local account the target
+  domain is the host's own name. The rule compares the host with itself rather than using an exclusion list.
+  The benign corpus contains no domain account creation, so it cannot measure this tuning; it is based on
+  known production noise (help desk account creation on domain controllers).
+  Production note: local account creation should be rare where local administrator passwords are managed
+  centrally (for example with LAPS); check whether the new account was added to the local Administrators
+  group (Security Event ID 4732), which this data does not contain.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Persistence
+relevantTechniques:
+  - T1136.001
+query: |
+  SecurityEvent
+  | where EventID == 4720
+  // A local account's domain is the host's own name; on a domain controller it is the AD domain
+  | where TargetDomainName =~ tostring(split(Computer, ".")[0])
+  | project TimeGenerated, Computer, TargetUserName, TargetDomainName, TargetSid, SubjectUserName,
+            SubjectDomainName, SubjectUserSid, SubjectLogonId
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: TargetUserName
+      - identifier: NTDomain
+        columnName: TargetDomainName
+      - identifier: Sid
+        columnName: TargetSid
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled

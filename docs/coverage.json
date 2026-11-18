@@ -1,0 +1,179 @@
+{
+  "name": "sentinel-detections coverage",
+  "versions": {
+    "attack": "18",
+    "navigator": "5.3.2",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "ATT&CK techniques covered by the scheduled analytics rules in this repository. Score = number of rules tagged with the technique.",
+  "filters": {
+    "platforms": [
+      "Windows"
+    ]
+  },
+  "sorting": 3,
+  "layout": {
+    "layout": "side",
+    "showID": true,
+    "showName": true,
+    "expandedSubtechniques": "annotated"
+  },
+  "hideDisabled": false,
+  "techniques": [
+    {
+      "techniqueID": "T1003.001",
+      "score": 2,
+      "comment": "LSASS memory read access; LSASS dump via comsvcs.dll MiniDump",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/credential_access/lsass_memory_access.yaml"
+        },
+        {
+          "name": "Rule",
+          "value": "rules/defense_evasion/rundll32_comsvcs_minidump.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1003.006",
+      "score": 1,
+      "comment": "DCSync replication request by a non-computer account",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/credential_access/dcsync.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1021.002",
+      "score": 1,
+      "comment": "File written to a remote administrative share",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/lateral_movement/admin_share_write.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1053.005",
+      "score": 1,
+      "comment": "Scheduled task created or modified by a user account",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/persistence/scheduled_task_by_user.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1059.001",
+      "score": 1,
+      "comment": "PowerShell encoded command on the command line",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/execution/encoded_powershell.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1136.001",
+      "score": 1,
+      "comment": "Local account created on a host",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/persistence/local_account_created.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1218.011",
+      "score": 1,
+      "comment": "LSASS dump via comsvcs.dll MiniDump",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/defense_evasion/rundll32_comsvcs_minidump.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1543.003",
+      "score": 1,
+      "comment": "Service installed by a user account",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/persistence/service_installed_by_user.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1547.001",
+      "score": 1,
+      "comment": "Registry Run key value set",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/persistence/run_key_persistence.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1550.002",
+      "score": 1,
+      "comment": "Overpass-the-hash logon with LSASS memory write",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/lateral_movement/overpass_the_hash.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1558.003",
+      "score": 1,
+      "comment": "Kerberoasting with RC4 service tickets",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/credential_access/kerberoasting.yaml"
+        }
+      ]
+    },
+    {
+      "techniqueID": "T1562.002",
+      "score": 1,
+      "comment": "Audit policy auditing removed",
+      "metadata": [
+        {
+          "name": "Rule",
+          "value": "rules/defense_evasion/audit_policy_disabled.yaml"
+        }
+      ]
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#ffffff",
+      "#31a354"
+    ],
+    "minValue": 0,
+    "maxValue": 2
+  },
+  "legendItems": [
+    {
+      "label": "1 rule",
+      "color": "#98d1aa"
+    },
+    {
+      "label": "2 rules",
+      "color": "#31a354"
+    }
+  ]
+}
