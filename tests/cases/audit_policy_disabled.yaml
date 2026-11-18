@@ -1,0 +1,6 @@
+---
+attack_dataset: auditpol_policy_modification
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 4719
