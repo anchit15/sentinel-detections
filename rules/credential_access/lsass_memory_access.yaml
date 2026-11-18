@@ -1,0 +1,49 @@
+---
+id: 4d2b8f6e-9a31-4c7e-b5d0-2f8e1a6c3b97
+name: LSASS memory read access
+description: |
+  Detects a process opening lsass.exe with the PROCESS_VM_READ right (0x10), which is required to read
+  credentials from LSASS memory (mimikatz, procdump, comsvcs.dll MiniDump). Built on Sysmon Event ID 10.
+  Tuning: instead of excluding processes by name, the rule alerts only when the requested access includes
+  the memory-read bit. Routine access by svchost (0x1000, 0x2000, 0x3000) and VBoxService (0x1400) does not
+  include it and is not alerted.
+  Production note: some security products (antivirus, EDR) read LSASS memory legitimately; exclude them by
+  full path and signer, never by file name alone.
+  The Sysmon version in this data does not record SourceUser, so no Account entity is mapped; on Sysmon 13+
+  add SourceUser as an Account entity.
+severity: High
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - Event
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.001
+query: |
+  Event
+  | where Source == "Microsoft-Windows-Sysmon" and EventID == 10
+  | extend TargetImage     = extract(@'<Data Name="TargetImage">([^<]*)<', 1, EventData),
+           SourceImage     = extract(@'<Data Name="SourceImage">([^<]*)<', 1, EventData),
+           SourceProcessId = extract(@'<Data Name="SourceProcessId">([^<]*)<', 1, EventData),
+           GrantedAccess   = extract(@'<Data Name="GrantedAccess">([^<]*)<', 1, EventData),
+           CallTrace       = extract(@'<Data Name="CallTrace">([^<]*)<', 1, EventData)
+  | where TargetImage endswith @"\lsass.exe"
+  // 16 = 0x10 = PROCESS_VM_READ, required to read credentials from LSASS memory
+  | where binary_and(tolong(GrantedAccess), 16) != 0
+  | project TimeGenerated, Computer, SourceImage, SourceProcessId, GrantedAccess, CallTrace, TargetImage
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: SourceProcessId
+version: 1.0.0
+kind: Scheduled

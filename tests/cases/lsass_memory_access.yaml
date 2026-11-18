@@ -1,0 +1,8 @@
+---
+attack_dataset: empire_mimikatz_logonpasswords
+min_hits: 1
+baseline_query: |
+  Event
+  | where Source == "Microsoft-Windows-Sysmon" and EventID == 10
+  | extend TargetImage = extract(@'<Data Name="TargetImage">([^<]*)<', 1, EventData)
+  | where TargetImage endswith @"\lsass.exe"
