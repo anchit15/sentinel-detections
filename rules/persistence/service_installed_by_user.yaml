@@ -1,0 +1,75 @@
+---
+id: e252ca29-eb13-4391-afc3-424a009fb340
+name: Service installed by a user account
+description: |
+  Detects a Windows service being installed by a user account, locally or remotely (PsExec, SharpSC, sc.exe
+  \\host create). Attackers install services to run their tools as SYSTEM and to persist. Built on System
+  Event ID 7045 and Security Event ID 4697, so it works with whichever log is collected; one alert is raised
+  per host, service binary and installer, even when both logs record the same install.
+  Tuning: installs by SYSTEM, LOCAL SERVICE and NETWORK SERVICE are excluded, because Windows Update and
+  MSI installers run as SYSTEM. 4697 is matched by the well-known SIDs (S-1-5-18, -19, -20); 7045 has no SID
+  column in the Event table, so it is matched by the resolved account names, which differ on non-English
+  systems. Service paths are deliberately not excluded: the implant in the test data is in System32.
+  The benign corpus contains no other service installs, so it cannot measure this tuning; the exclusions are
+  based on known production false positives (software updates and installers running as SYSTEM).
+  Production note: administrators and deployment tools install services as user accounts; exclude them by
+  installer account, host and full service path together.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+      - Event
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1543.003
+query: |
+  union
+    (Event
+     | where Source == "Service Control Manager" and EventID == 7045
+     // The Event table has no SID column, so the installer is matched by its resolved account name
+     | where UserName !in~ (@"NT AUTHORITY\SYSTEM", @"NT AUTHORITY\LOCAL SERVICE", @"NT AUTHORITY\NETWORK SERVICE")
+     | extend ServiceName     = extract(@'<Data Name="ServiceName">([^<]*)<', 1, EventData),
+              ServiceFileName = extract(@'<Data Name="ImagePath">([^<]*)<', 1, EventData),
+              InstallerDomain = tostring(split(UserName, @"\")[0]),
+              InstallerName   = tostring(split(UserName, @"\")[1])),
+    (SecurityEvent
+     | where EventID == 4697
+     // SYSTEM, LOCAL SERVICE and NETWORK SERVICE
+     | where SubjectUserSid !in ("S-1-5-18", "S-1-5-19", "S-1-5-20")
+     | extend InstallerDomain = SubjectDomainName, InstallerName = SubjectUserName)
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), ServiceNames = make_set(ServiceName),
+              SourceEvents = make_set(EventID)
+            by Computer, ServiceFileName, InstallerDomain, InstallerName
+  // The image path can carry arguments; keep the executable for the File entity
+  | extend ExecutablePath = coalesce(extract(@'(?i)^"?(.*?\.(?:exe|dll|sys|com|bat|cmd))', 1, ServiceFileName),
+                                     ServiceFileName)
+  | extend FileName = tostring(split(ExecutablePath, @"\")[-1])
+  | extend FileDirectory = substring(ExecutablePath, 0, strlen(ExecutablePath) - strlen(FileName) - 1)
+  | project StartTime, EndTime, Computer, InstallerName, InstallerDomain, ServiceNames, ServiceFileName,
+            FileName, FileDirectory, SourceEvents
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: InstallerName
+      - identifier: NTDomain
+        columnName: InstallerDomain
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: File
+    fieldMappings:
+      - identifier: Name
+        columnName: FileName
+      - identifier: Directory
+        columnName: FileDirectory
+version: 1.0.0
+kind: Scheduled

@@ -1,0 +1,7 @@
+---
+attack_dataset: covenant_sharpsc_create
+min_hits: 1
+baseline_query: |
+  union
+    (Event | where Source == "Service Control Manager" and EventID == 7045),
+    (SecurityEvent | where EventID == 4697)
