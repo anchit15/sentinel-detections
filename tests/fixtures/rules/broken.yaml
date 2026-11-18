@@ -1,0 +1,28 @@
+---
+id: 07bfaa25-7297-40ef-b0af-655a1bb4d909
+name: Test fixture - valid rule that never fires
+description: Schema-valid rule whose query matches no events, used to prove the harness fails it.
+severity: Low
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - Event
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.001
+query: |
+  Event
+  | where EventID == -1
+  | project TimeGenerated, Computer
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled

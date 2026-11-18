@@ -1,3 +1,5 @@
 # Runtime dependencies, pinned. Each is added by the change that first imports it.
 azure-kusto-data==6.0.4
+jsonschema==4.26.0
+python-dotenv==1.2.4
 PyYAML==6.0.3

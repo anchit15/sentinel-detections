@@ -10,19 +10,17 @@ import argparse
 import csv
 import gzip
 import json
-import os
 import sys
-import time
 import zipfile
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
-from azure.kusto.data import KustoClient, KustoConnectionStringBuilder
-from azure.kusto.data.exceptions import KustoError
+from azure.kusto.data import KustoClient
 
 from sentinel_detections.download import sha256_file
+from sentinel_detections.kusto import Config, connect, load_config, wait_until_ready
 from sentinel_detections.manifest import Dataset, load_manifest
 from sentinel_detections.normalise import (
     EVENT,
@@ -36,25 +34,6 @@ from sentinel_detections.normalise import (
 
 TABLES = (SECURITY_EVENT, EVENT)
 READY_TIMEOUT_SECONDS = 180
-READY_POLL_SECONDS = 3
-
-
-@dataclass(frozen=True)
-class Config:
-    """Emulator connection settings, read from environment variables."""
-
-    cluster_url: str
-    database: str
-    container_data_dir: str
-
-    @classmethod
-    def from_env(cls) -> Config:
-        """Build the config; defaults match docker-compose.yml and .env.example."""
-        return cls(
-            cluster_url=os.environ.get("KUSTO_CLUSTER_URL", "http://localhost:8080"),
-            database=os.environ.get("KUSTO_DATABASE", "NetDefaultDB"),
-            container_data_dir=os.environ.get("KUSTO_DATA_DIR", "/kustodata"),
-        )
 
 
 @dataclass
@@ -141,19 +120,6 @@ def ingest_command(table: str, container_path: PurePosixPath) -> str:
     return f".ingest into table {table} (@'{container_path}') with (format='csv')"
 
 
-def wait_until_ready(client: KustoClient, database: str, timeout: float) -> None:
-    """Poll the emulator until it answers management commands or the timeout passes."""
-    deadline = time.monotonic() + timeout
-    while True:
-        try:
-            client.execute_mgmt(database, ".show version")
-            return
-        except (KustoError, OSError) as error:
-            if time.monotonic() >= deadline:
-                raise RuntimeError(f"Kusto emulator not reachable: {error}") from error
-            time.sleep(READY_POLL_SECONDS)
-
-
 def counts_by_dataset(client: KustoClient, database: str, table: str) -> dict[str, int]:
     """Return the number of rows per Dataset tag in ``table``."""
     response = client.execute_query(database, f"{table} | summarize Rows = count() by Dataset")
@@ -219,8 +185,7 @@ def load(datasets: list[Dataset], data_dir: Path, config: Config) -> int:
             print(f"{archive} missing or changed; run scripts/download_data.py", file=sys.stderr)
             return 1
 
-    connection = KustoConnectionStringBuilder.with_no_authentication(config.cluster_url)
-    with KustoClient(connection) as client:
+    with connect(config) as client:
         wait_until_ready(client, config.database, READY_TIMEOUT_SECONDS)
         for table in TABLES:
             client.execute_mgmt(config.database, f".drop table {table} ifexists")
@@ -262,7 +227,7 @@ def main() -> int:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     args = parser.parse_args()
     datasets = load_manifest(args.data_dir / "manifest.yaml")
-    return load(datasets, args.data_dir, Config.from_env())
+    return load(datasets, args.data_dir, load_config())
 
 
 if __name__ == "__main__":

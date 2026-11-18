@@ -1,0 +1,29 @@
+---
+id: 39dd473e-450e-4d52-a357-79fdee9bfa8d
+name: Test fixture - rule with a field Sentinel does not define
+description: Otherwise valid rule carrying the repo-only status field, which must be rejected.
+severity: Low
+status: Available
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - Event
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.001
+query: |
+  Event
+  | where EventID == -1
+  | project TimeGenerated, Computer
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled

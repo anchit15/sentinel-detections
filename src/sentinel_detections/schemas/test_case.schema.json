@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Detection rule test case",
+  "$comment": "One file per rule at tests/cases/<rule file stem>.yaml. Expected cross-hits are not declared here: they are derived from the manifest's technique tags.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attack_dataset", "min_hits", "baseline_query"],
+  "properties": {
+    "attack_dataset": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "min_hits": { "type": "integer", "minimum": 1 },
+    "baseline_query": { "type": "string", "minLength": 1, "maxLength": 10000 }
+  }
+}

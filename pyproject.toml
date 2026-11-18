@@ -27,4 +27,7 @@ select = ["E", "W", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --strict-markers"
+markers = [
+    "emulator: needs the Kusto emulator with every dataset loaded; skipped otherwise unless KUSTO_REQUIRED=1",
+]
