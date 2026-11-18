@@ -1,0 +1,65 @@
+---
+id: 42aaecff-65d4-4c76-b17d-40ad86ddd47f
+name: PowerShell encoded command on the command line
+description: |
+  Detects a process started with PowerShell's -EncodedCommand parameter followed by a Base64 payload, a
+  common way for stagers and malware (Empire, Cobalt Strike, droppers) to hide a script from command-line
+  logging. Built on Security Event ID 4688 with command-line auditing enabled. The payload is decoded into
+  DecodedCommand for triage.
+  Tuning: instead of alerting on every PowerShell process, the rule alerts only on the encoded-command
+  capability. PowerShell accepts any unambiguous prefix of -EncodedCommand (-e, -ec, -enc, ...) introduced
+  by -, / or a dash character, so the match covers every abbreviation and casing. The process name is not
+  checked, so a renamed powershell.exe is still detected; the trade-off is that another program taking -e
+  followed by a long token could match.
+  Production note: some management and deployment tools launch encoded PowerShell; exclude them by parent
+  process full path and the decoded script, never by user name alone. Limitation: scripts run without
+  -EncodedCommand are not covered; PowerShell Script Block Logging (4104) covers those.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+relevantTechniques:
+  - T1059.001
+query: |
+  // Any prefix of -EncodedCommand (-e, -ec, -enc, ...) introduced by -, / or a dash character
+  // followed by a Base64 payload (the only capturing group)
+  let EncodedCommandPattern = strcat(
+      @'(?i)\s[-/\x{2013}\x{2014}\x{2015}]',
+      @'e(?:c|n(?:c(?:o(?:d(?:e(?:d(?:c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?)?)?)?)?)?)?)?',
+      @'\s+([A-Za-z0-9+/=]{16,})');
+  SecurityEvent
+  | where EventID == 4688
+  | extend EncodedCommand = extract(EncodedCommandPattern, 1, CommandLine)
+  | where isnotempty(EncodedCommand)
+  // The payload is UTF-16LE text; removing the NUL bytes leaves readable ASCII
+  | extend DecodedCommand = replace_string(base64_decode_tostring(EncodedCommand), "\0", "")
+  | project TimeGenerated, Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, ParentProcessName,
+            NewProcessName, NewProcessId, CommandLine, DecodedCommand
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: NewProcessId
+      - identifier: CommandLine
+        columnName: CommandLine
+version: 1.0.0
+kind: Scheduled

@@ -14,4 +14,9 @@ Each rule is run once per dataset. Every dataset falls into one of three groups:
 
 | Rule | Technique | Attack dataset | Attack hits | Cross-hits | FP baseline | FP tuned |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
+| [DCSync replication request by a non-computer account](../rules/credential_access/dcsync.yaml) | T1003.006 | `empire_dcsync` | 1 | 0 | 0 | 0 |
+| [Kerberoasting with RC4 service tickets](../rules/credential_access/kerberoasting.yaml) | T1558.003 | `purplesharp_ad_playbook_i` | 1 | 0 | 7 | 0 |
 | [LSASS memory read access](../rules/credential_access/lsass_memory_access.yaml) | T1003.001 | `empire_mimikatz_logonpasswords` | 1 | 4 | 153 | 0 |
+| [PowerShell encoded command on the command line](../rules/execution/encoded_powershell.yaml) | T1059.001 | `empire_launcher_vbs` | 1 | 0 | 3 | 0 |
+| [Overpass-the-hash logon with LSASS memory write](../rules/lateral_movement/overpass_the_hash.yaml) | T1550.002 | `empire_over_pth` | 1 | 0 | 0 | 0 |
+| [Scheduled task created or modified by a user account](../rules/persistence/scheduled_task_by_user.yaml) | T1053.005 | `schtask_create` | 1 | 0 | 5 | 0 |

@@ -1,0 +1,57 @@
+---
+id: 739c7f2b-efc4-4b54-a0c5-1b2f9fb93272
+name: Scheduled task created or modified by a user account
+description: |
+  Detects a scheduled task being created (Security Event ID 4698) or modified (4702) by a user account,
+  locally or remotely. Attackers use scheduled tasks for persistence and to run commands as SYSTEM, often
+  hiding them under built-in Windows task paths. The task's command, arguments and run-as account are
+  extracted from the task XML for triage.
+  Tuning: Windows maintains its own tasks as SYSTEM, LOCAL SERVICE or NETWORK SERVICE, so changes made by
+  those well-known SIDs (S-1-5-18, S-1-5-19, S-1-5-20) are excluded. SIDs cannot be renamed, unlike account
+  names. Task paths are deliberately not excluded: the attack in the test data registers a task under
+  \Microsoft\Windows\, which a path exclusion would miss.
+  Production note: administrators and deployment tools create tasks legitimately; exclude them by the
+  specific account, host and task command together, never by task path alone.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1053.005
+query: |
+  SecurityEvent
+  | where EventID in (4698, 4702)
+  // Windows maintains its own tasks as SYSTEM, LOCAL SERVICE or NETWORK SERVICE
+  | where SubjectUserSid !in ("S-1-5-18", "S-1-5-19", "S-1-5-20")
+  // The task XML is escaped once in 4698 (&lt;) and twice in 4702 (&amp;lt;)
+  | extend TaskName      = extract(@'<Data Name="TaskName">([^<]*)<', 1, EventData),
+           TaskCommand   = extract(@'Command&(?:amp;)?gt;([^&]*)&', 1, EventData),
+           TaskArguments = extract(@'Arguments&(?:amp;)?gt;([^&]*)&', 1, EventData),
+           TaskRunAs     = extract(@'UserId&(?:amp;)?gt;([^&]*)&', 1, EventData),
+           Action        = iff(EventID == 4698, "Created", "Modified")
+  | project TimeGenerated, Computer, Action, TaskName, TaskCommand, TaskArguments, TaskRunAs,
+            SubjectUserName, SubjectDomainName, SubjectUserSid, SubjectLogonId
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled

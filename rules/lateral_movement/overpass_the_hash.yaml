@@ -1,0 +1,75 @@
+---
+id: 4965eff1-cbfe-43b8-ace1-19382bc93e41
+name: Overpass-the-hash logon with LSASS memory write
+description: |
+  Detects overpass-the-hash (mimikatz sekurlsa::pth): a new-credentials logon (Security Event ID 4624,
+  LogonType 9, seclogo) on a host where, within two minutes, a process opened lsass.exe with
+  PROCESS_VM_WRITE (Sysmon Event ID 10). sekurlsa::pth writes the stolen hash into the new logon session in
+  LSASS, so network access from that session authenticates as the victim.
+  Tuning: runas /netonly creates the same LogonType 9 seclogo logon but never writes to LSASS memory, so the
+  rule requires both events instead of alerting on the logon alone. The rule therefore needs Sysmon process
+  access logging on endpoints.
+  The benign corpus contains no runas /netonly logons, so it cannot measure this tuning; the correlation is
+  based on known production false positives (administrators using runas /netonly).
+  The query period (2h) is longer than the frequency (1h) so that a write and a logon on either side of a run
+  boundary are still correlated. Trade-off: a pair that falls inside the overlap is seen by two runs and
+  alerts twice; incident grouping on the host and account merges the duplicates.
+severity: High
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+      - Event
+queryFrequency: 1h
+queryPeriod: 2h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+  - LateralMovement
+relevantTechniques:
+  - T1550.002
+query: |
+  let LsassWrites =
+      Event
+      | where Source == "Microsoft-Windows-Sysmon" and EventID == 10
+      | extend TargetImage     = extract(@'<Data Name="TargetImage">([^<]*)<', 1, EventData),
+               SourceImage     = extract(@'<Data Name="SourceImage">([^<]*)<', 1, EventData),
+               SourceProcessId = extract(@'<Data Name="SourceProcessId">([^<]*)<', 1, EventData),
+               GrantedAccess   = extract(@'<Data Name="GrantedAccess">([^<]*)<', 1, EventData)
+      | where TargetImage endswith @"\lsass.exe"
+      // 32 = 0x20 = PROCESS_VM_WRITE, needed to plant the hash in the new logon session
+      | where binary_and(tolong(GrantedAccess), 32) != 0
+      | project WriteTime = TimeGenerated, Computer, SourceImage, SourceProcessId, GrantedAccess;
+  SecurityEvent
+  | where EventID == 4624 and LogonType == 9
+  | where LogonProcessName has "seclogo" and AuthenticationPackageName == "Negotiate"
+  | project LogonTime = TimeGenerated, Computer, SubjectUserName, SubjectDomainName,
+            TargetOutboundUserName, TargetOutboundDomainName, TargetLogonId
+  | join kind=inner LsassWrites on Computer
+  | where abs(datetime_diff("second", LogonTime, WriteTime)) <= 120
+  | project LogonTime, WriteTime, Computer, SubjectUserName, SubjectDomainName, TargetOutboundUserName,
+            TargetOutboundDomainName, TargetLogonId, SourceImage, SourceProcessId, GrantedAccess
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: TargetOutboundUserName
+      - identifier: NTDomain
+        columnName: TargetOutboundDomainName
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: SourceProcessId
+version: 1.0.0
+kind: Scheduled

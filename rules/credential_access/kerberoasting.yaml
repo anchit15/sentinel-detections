@@ -1,0 +1,56 @@
+---
+id: 715da211-7c7d-4cd6-aa50-0d654ff52544
+name: Kerberoasting with RC4 service tickets
+description: |
+  Detects Kerberoasting (Rubeus, Invoke-Kerberoast, Impacket GetUserSPNs): a user requests service tickets
+  encrypted with RC4 for accounts that have an SPN, to crack the service account passwords offline. Built
+  on Security Event ID 4769 on domain controllers. One alert is raised per requesting account and source IP,
+  listing the services requested.
+  Tuning: only successful RC4 tickets (0x17, 0x18) are kept, because RC4 is what makes offline cracking
+  fast; AES tickets (0x11, 0x12), the default in modern domains, are ignored. Tickets for computer accounts
+  (names ending in $) and krbtgt are excluded: computer accounts have random 120-character passwords that
+  cannot realistically be cracked. No volume threshold is applied, so roasting a single account still alerts.
+  Production note: legacy applications that only support RC4 will alert; fix them, or exclude the specific
+  service and client pair, never all RC4 tickets. Limitation: an attacker who requests AES tickets is not
+  detected by this rule.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1558.003
+query: |
+  SecurityEvent
+  | where EventID == 4769
+  | extend TicketEncryptionType = extract(@'<Data Name="TicketEncryptionType">([^<]*)<', 1, EventData)
+  // 0x17 RC4-HMAC and 0x18 RC4-HMAC-EXP are far faster to crack offline than AES
+  | where TicketEncryptionType in ("0x17", "0x18") and Status == "0x0"
+  // Computer account passwords are random and 120 characters long; krbtgt tickets are not service tickets
+  | where ServiceName !endswith "$" and ServiceName !~ "krbtgt"
+  | extend ClientIp = trim_start(@"::ffff:", IpAddress)
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), Tickets = count(),
+              ServiceCount = dcount(ServiceName), Services = make_set(ServiceName, 50)
+            by Computer, TargetUserName, ClientIp
+  | extend AccountName = tostring(split(TargetUserName, "@")[0]),
+           UPNSuffix   = tostring(split(TargetUserName, "@")[1])
+  | project StartTime, EndTime, Computer, AccountName, UPNSuffix, ClientIp, Tickets, ServiceCount, Services
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: UPNSuffix
+        columnName: UPNSuffix
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: ClientIp
+version: 1.0.0
+kind: Scheduled

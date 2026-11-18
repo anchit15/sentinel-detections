@@ -1,0 +1,6 @@
+---
+attack_dataset: schtask_create
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID in (4698, 4702)

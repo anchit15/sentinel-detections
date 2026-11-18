@@ -1,0 +1,6 @@
+---
+attack_dataset: purplesharp_ad_playbook_i
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 4769
