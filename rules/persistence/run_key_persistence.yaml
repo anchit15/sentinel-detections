@@ -1,0 +1,72 @@
+---
+id: f0e33374-2177-49b9-8d31-bbdbe9446c61
+name: Registry Run key value set
+description: |
+  Detects a value being written under a Run key (Run, RunOnce, RunOnceEx, Policies\Explorer\Run, including
+  Wow6432Node, in the machine or a user hive). Programs listed there start automatically at logon, which
+  makes Run keys a common persistence method. Built on Sysmon Event ID 13 (registry value set).
+  Event ID 13 always means "value set", so the rule does not filter on the EventType field, which is
+  missing from some Sysmon rows.
+  Tuning: every Run key write alerts, because each one is a persistence change and they are infrequent. The
+  benign corpus contains no other Run key writes, so it cannot measure tuning.
+  Production note: software updaters write Run keys routinely (for example OneDrive and Teams); add narrow
+  exclusions for them by the writer's full image path together with the value name, never by value name
+  or key alone.
+  The Sysmon version in this data does not record the user, so no Account entity is mapped.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - Event
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1547.001
+query: |
+  Event
+  // Event ID 13 is always a value set; EventType is missing on some rows, so it is not used
+  | where Source == "Microsoft-Windows-Sysmon" and EventID == 13
+  | extend TargetObject = extract(@'<Data Name="TargetObject">([^<]*)<', 1, EventData),
+           Details      = extract(@'<Data Name="Details">([^<]*)<', 1, EventData),
+           Image        = extract(@'<Data Name="Image">([^<]*)<', 1, EventData),
+           ProcessId    = extract(@'<Data Name="ProcessId">([^<]*)<', 1, EventData)
+  | where TargetObject matches regex
+      @'(?i)\\(?:Wow6432Node\\)?Microsoft\\Windows\\CurrentVersion\\(?:Run|RunOnce|RunOnceEx|Policies\\Explorer\\Run)\\'
+  // Sysmon abbreviates the hive; Sentinel's RegistryKey entity expects the full hive name
+  | extend HiveAbbreviation = tostring(split(TargetObject, @"\")[0]),
+           ValueName        = tostring(split(TargetObject, @"\")[-1])
+  | extend RegistryHive = case(HiveAbbreviation =~ "HKLM", "HKEY_LOCAL_MACHINE",
+                               HiveAbbreviation =~ "HKU", "HKEY_USERS",
+                               HiveAbbreviation =~ "HKCR", "HKEY_CLASSES_ROOT",
+                               HiveAbbreviation),
+           RegistryKey  = substring(TargetObject, strlen(HiveAbbreviation) + 1,
+                                    strlen(TargetObject) - strlen(HiveAbbreviation) - strlen(ValueName) - 2)
+  | project TimeGenerated, Computer, Image, ProcessId, RegistryHive, RegistryKey, ValueName, Details, TargetObject
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Process
+    fieldMappings:
+      - identifier: ProcessId
+        columnName: ProcessId
+  - entityType: RegistryKey
+    fieldMappings:
+      - identifier: Hive
+        columnName: RegistryHive
+      - identifier: Key
+        columnName: RegistryKey
+  - entityType: RegistryValue
+    fieldMappings:
+      - identifier: Name
+        columnName: ValueName
+      - identifier: Value
+        columnName: Details
+version: 1.0.0
+kind: Scheduled
