@@ -1,0 +1,6 @@
+---
+attack_dataset: covenant_copy_smb
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 5145

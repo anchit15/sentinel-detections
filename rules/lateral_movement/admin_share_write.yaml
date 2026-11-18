@@ -1,0 +1,59 @@
+---
+id: a1862656-fbbc-4fe0-ac37-6d995b686223
+name: File written to a remote administrative share
+description: |
+  Detects files being written to a host through an administrative share (C$, D$, ADMIN$, ...) over SMB, the
+  usual way to copy tools to a target before running them remotely (PsExec, Covenant, Cobalt Strike). Built
+  on Security Event ID 5145 (detailed file share auditing) on the target host. One alert is raised per source
+  IP, account and target host, listing the files written.
+  Tuning: only drive-letter shares and ADMIN$ are kept; IPC$ carries named-pipe RPC (samr, lsarpc, svcctl),
+  not file access, and SYSVOL and other shares are not administrative. Only requests for write access
+  (WriteData 0x2 or AppendData 0x4 in the access mask) alert, because read-only browsing of admin shares by
+  backup and management tools is common.
+  Production note: software deployment and backup systems write to admin shares; exclude them by source host
+  and account together, never by file name.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: SecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - LateralMovement
+relevantTechniques:
+  - T1021.002
+query: |
+  SecurityEvent
+  | where EventID == 5145
+  // Administrative shares: a drive letter (C$, D$, ...) or ADMIN$; IPC$ carries named-pipe RPC, not files
+  | where ShareName matches regex @'(?i)\\(?:[a-z]|ADMIN)\$$'
+  // 6 = 0x2 WriteData + 0x4 AppendData: the client asked to write, not just to read or list
+  | where binary_and(tolong(AccessMask), 6) != 0
+  | extend SourceIp = trim_start(@"::ffff:", IpAddress)
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), Events = count(),
+              Shares = make_set(ShareName), Files = make_set(RelativeTargetName, 50)
+            by Computer, SubjectUserName, SubjectDomainName, SubjectUserSid, SourceIp
+  | project StartTime, EndTime, Computer, SourceIp, SubjectUserName, SubjectDomainName, SubjectUserSid, Shares,
+            Files, Events
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+      - identifier: Sid
+        columnName: SubjectUserSid
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: SourceIp
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+version: 1.0.0
+kind: Scheduled
