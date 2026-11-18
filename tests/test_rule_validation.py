@@ -1,6 +1,7 @@
 """Unit tests for rule and test-case validation; no emulator needed."""
 
 import copy
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -14,9 +15,11 @@ from sentinel_detections.rules import (
     pairing_errors,
     parse_time_span,
     rule_errors,
+    rule_set_errors,
 )
 
 VALID_RULE = load_rule(FIXTURES_DIR / "rules" / "broken.yaml")
+OTHER_ID = "00000000-0000-4000-8000-000000000001"
 VALID_CASE = {
     "attack_dataset": "empire_mimikatz_logonpasswords",
     "min_hits": 1,
@@ -150,3 +153,18 @@ def test_pairing_reports_missing_orphaned_and_duplicate_files(tmp_path):
     assert "'a' is used more than once" in errors
     assert "b.yaml: no test case" in errors
     assert "c.yaml: no rule named c.yaml" in errors
+
+
+def test_rule_set_with_valid_unique_rules_has_no_errors():
+    other_path = VALID_RULE.path.with_name("other.yaml")
+    other = replace(VALID_RULE, path=other_path, data=mutated(id=OTHER_ID))
+    assert rule_set_errors([VALID_RULE, other]) == []
+
+
+def test_rule_set_reports_repeated_ids_and_invalid_rules():
+    repeated = replace(VALID_RULE, path=VALID_RULE.path.with_name("copy.yaml"))
+    invalid_path = VALID_RULE.path.with_name("bad.yaml")
+    invalid = replace(VALID_RULE, path=invalid_path, data=mutated(kind=None))
+    errors = rule_set_errors([VALID_RULE, repeated, invalid])
+    assert any("bad.yaml" in error and "'kind' is a required property" in error for error in errors)
+    assert any(f"rule id {VALID_RULE.data['id']} is used by" in error for error in errors)

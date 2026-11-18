@@ -217,6 +217,29 @@ def _yaml_files(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.yaml")) if directory.is_dir() else []
 
 
+def load_rules(rules_dir: Path) -> list[Rule]:
+    """Load every rule file under ``rules_dir``, sorted by path, without validating them."""
+    return [load_rule(path) for path in _yaml_files(rules_dir)]
+
+
+def rule_set_errors(rules: Iterable[Rule]) -> list[str]:
+    """Validate every rule and check that rule ids are unique across the set.
+
+    Exported Sentinel resources are named by rule id, so a repeated id would make one
+    rule silently overwrite another on import.
+    """
+    errors = []
+    paths_by_id: dict[str, list[Path]] = {}
+    for rule in rules:
+        errors.extend(f"{rule.path}: {error}" for error in rule_errors(rule.data))
+        if isinstance(rule.data.get("id"), str):
+            paths_by_id.setdefault(rule.data["id"], []).append(rule.path)
+    for rule_id, paths in sorted(paths_by_id.items()):
+        if len(paths) > 1:
+            errors.append(f"rule id {rule_id} is used by {', '.join(map(str, paths))}")
+    return errors
+
+
 def pairing_errors(rules_dir: Path, cases_dir: Path) -> list[str]:
     """Report rules without a test case, test cases without a rule, and repeated stems."""
     rule_paths = _yaml_files(rules_dir)
