@@ -1,0 +1,6 @@
+---
+attack_dataset: empire_over_pth
+min_hits: 1
+baseline_query: |
+  SecurityEvent
+  | where EventID == 4624 and LogonType == 9
