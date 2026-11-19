@@ -10,8 +10,6 @@ Twelve Microsoft Sentinel analytics rules in KQL, mapped to MITRE ATT&CK and tes
 
 *ATT&CK v18 coverage. Darker cells are covered by more than one rule.*
 
-<!-- docs/demo.gif: demo recording goes here -->
-
 ## Why
 
 Noisy detections do more damage in a SOC than most people expect. They bury the real alerts and teach analysts to skim. So I treated these Microsoft Sentinel rules like code: each of the 12 KQL rules is mapped to MITRE ATT&CK, has to fire on a real attack recording, has to stay quiet on everything else, and CI checks all of that on every change.
