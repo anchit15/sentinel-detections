@@ -34,7 +34,6 @@ query: |
            CallTrace       = extract(@'<Data Name="CallTrace">([^<]*)<', 1, EventData)
   | where TargetImage endswith @"\lsass.exe"
   // 16 = 0x10 = PROCESS_VM_READ, required to read credentials from LSASS memory
-  | where binary_and(tolong(GrantedAccess), 16) != 0
   | project TimeGenerated, Computer, SourceImage, SourceProcessId, GrantedAccess, CallTrace, TargetImage
 entityMappings:
   - entityType: Host
